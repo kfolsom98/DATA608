@@ -1,0 +1,136 @@
+---
+title: "DATA 608: Homework 1"
+author: "Keith Folsom"
+date: "February 5, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+```{r, echo=F}
+
+suppressWarnings(suppressMessages(library(RCurl)))
+suppressWarnings(suppressMessages(library(ggplot2)))
+suppressWarnings(suppressMessages(library(dplyr)))
+suppressWarnings(suppressMessages(library(scales)))
+
+```
+
+
+#### Load the 5,000 company dataset from Github
+
+```{r}
+
+# load the 5,000 company dataset from Github
+URL <- getURL("https://raw.githubusercontent.com/charleyferrari/CUNY_DATA608/master/lecture1/Data/inc5000_data.csv")
+
+data <- read.csv(text = URL,  stringsAsFactors = F, header = T)
+
+state_df  <- data %>% 
+             group_by(State) %>% summarise(total = n()) %>% 
+             arrange(desc(total))
+
+```
+
+__Question 1.__  Create a graph that shows the distribution of companies in the dataset by State (ie how many are in each state). There are a lot of States, so consider which axis you should use assuming I am using a 'portrait' oriented screen (ie taller than wide). 
+
+```{r}
+
+q1 <- ggplot(data = state_df, aes(x=reorder(State, total) , y=total, fill=total)) +
+      geom_bar(stat="identity", position=position_dodge(), colour="black", width = 0.5) +  
+      coord_flip() +   scale_fill_gradient(low="light blue", high="dark blue") + scale_y_continuous(breaks = scales::pretty_breaks(n = 10)) +
+      guides(fill=FALSE) +
+      ggtitle("Number of Companies by State") +
+      xlab("State") + ylab("Total Companies")   
+
+q1
+
+```
+
+```{r, echo=F}
+ggsave("Question1.png", width = 4.8, height=6.4, dpi=100)
+
+```
+
+
+__Question 2.__ Let's dig in on the State with the 3rd most companies in the data set. Imagine you work for the state and are interested in how many people are employed by companies in different industries employ. Create a plot of average employment by industry for companies in this state (only use cases with full data (user R's complete.cases() function). Your graph should show how variable the ranges are, and exclude outliers.
+
+```{r}
+
+# handle outliers by industry. for this question, we're considering anything greater than thee 95th quantile an outlier
+# if greater than Q95, replace with the mean
+# if less than Q5, replace with mean
+
+data <- data %>% filter(complete.cases(.)) #only include complete cases
+
+data %>% group_by(Industry) %>% 
+         summarise(q5_employees = quantile(Employees, 0.05),
+                   mean_employees = mean(Employees),
+                   q95_employees = quantile(Employees, 0.95),
+                   total_employees = sum(Employees),
+                   q5_revenue  = quantile(Revenue, 0.05),
+                   mean_revenue = mean(Revenue),
+                   q95_revenue = quantile(Revenue, 0.95),
+                   total_revenue = sum(Revenue)) -> quantiles
+
+
+data %>%
+inner_join(quantiles, by = "Industry")   %>% 
+mutate(Employees_Adjusted = ifelse(Employees > q95_employees | Employees < q5_employees, mean_employees, Employees),
+       Revenue_Adjusted = ifelse(Revenue > q95_revenue | Revenue < q5_revenue, mean_revenue, Revenue)) %>%
+ select(State, Industry, Employees, Revenue, Employees_Adjusted, Revenue_Adjusted) -> adjusted_data
+
+
+# NY
+q2 <- 
+    adjusted_data %>% filter(State == state_df$State[3]) %>%
+    group_by(Industry) %>% summarize(avg_employees = mean(Employees_Adjusted)) %>%
+    ggplot( aes(x=reorder(Industry, avg_employees), y=avg_employees, fill=avg_employees)) +
+    geom_bar(stat="identity", position=position_dodge(), colour="black", width = 0.5) +           
+    scale_fill_gradient2(low="dark blue", high="dark blue") +
+    coord_flip()  + labs(x="Industry", y = "Average Number of Employees") + 
+    guides(fill=FALSE) + scale_y_continuous(breaks = scales::pretty_breaks(n = 15)) +
+    ggtitle("New York - Average Number of Employees by Industry")
+  
+q2
+
+```
+
+```{r, echo=F}
+
+ggsave("Question2.png", width = 6.4, height=6.4, dpi=100)
+
+```
+
+
+
+__Question 3.__ Now imagine you work for an investor and want to see which industries generate the most revenue per employee. Create a chart makes this information clear
+
+```{r}
+
+q3 <- 
+  adjusted_data %>% 
+  group_by(Industry) %>% 
+  summarise(revenue_per_employee = sum(Revenue_Adjusted)/sum(Employees_Adjusted)) %>% 
+  top_n(20, revenue_per_employee) %>%
+  ggplot(aes(x=reorder(Industry, revenue_per_employee), revenue_per_employee, fill=revenue_per_employee)) +
+  geom_bar(stat="Identity", color = "black", width = 0.5) +
+  scale_fill_gradient2(low="dark green", high="dark green") +
+  labs(y="Revenue Per Employee", x = "Industry")  +
+  theme(axis.text.x = element_text(angle=90)) + 
+  scale_y_continuous(labels=dollar, breaks = scales::pretty_breaks(n = 10)) +
+  guides(fill=FALSE) +   
+  ggtitle("Top 20 Revenue Generating Industries\n Per Employee")
+  
+q3
+
+```
+
+```{r, echo=F}
+ggsave("Question3.png", width = 4.8, height=6.4, dpi=100)
+
+```
+
+
+
