@@ -1,0 +1,246 @@
+---
+title: "DATA 608: Homework 2"
+author: "Keith Folsom"
+date: "February 20, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r packages, echo = F}
+suppressWarnings(suppressMessages(library(data.table)))
+suppressWarnings(suppressMessages(library(dplyr)))
+suppressWarnings(suppressMessages(library(ggplot2)))
+suppressWarnings(suppressMessages(library(scales)))
+suppressWarnings(suppressMessages(library(bigvis)))
+
+```
+
+
+## Homework 2
+
+We will be working with data about every tax lot in NYC, in a zip file. Please download it from http://www1.nyc.gov/site/planning/data-maps/open-data/dwn-pluto-mappluto.page. You will need to combine the data from each boro into one file called 'all_PLUTO_data.R' in order to complete this assignment. I encourage you to do this via code but it is not necessary to submit such code. 
+
+### Download and unzip the NYC borough tax dataset
+
+```{r}
+
+temp <- tempfile()
+download.file(
+  "http://www1.nyc.gov/assets/planning/download/zip/data-maps/open-data/nyc_pluto_16v2%20.zip", temp)
+
+# Brooklyn #
+BK <- read.csv(unzip(temp, "BORO_zip_files_csv/BK.csv"))
+
+# Bronx #
+BX <- read.csv(unzip(temp, "BORO_zip_files_csv/BX.csv"))
+
+# Manhattan #
+MN <- read.csv(unzip(temp, "BORO_zip_files_csv/MN.csv"))
+
+# Queens #
+QN <- read.csv(unzip(temp, "BORO_zip_files_csv/QN.csv"))
+
+# Staten Island
+SI <- read.csv(unzip(temp, "BORO_zip_files_csv/SI.csv"))
+
+# create the combined dataframe of all boros
+
+all_pluto <- tbl_df(rbindlist(list(BK, BX, MN, QN, SI)))
+
+```
+
+
+1. After a few building collapses, the City of New York is going to begin investigating older buildings for safety. However, the city has a limited number of inspectors, and wants to find a 'cut-off' date before most city buildings were constructed. Build a graph to help the city determine when most buildings were constructed. Is there anything in the results that causes you to question the accuracy of the data? (note: only look at buildings built since 1850)
+
+```{r}
+
+# Noticing 0s in the YearBuilt variable #
+summary(all_pluto$YearBuilt)
+
+# Year Built:
+# The year construction of the building was completed. 
+
+data <- all_pluto %>%
+        filter(YearBuilt > 1850, YearBuilt < 2016)  %>% 
+        select(YearBuilt)
+
+pluto_5yr <- condense(bin(data$YearBuilt, 5))
+
+pluto_5yr$pct <- with(pluto_5yr, .count/sum(.count))
+
+pluto_5yr <- arrange(pluto_5yr, desc(data.YearBuilt)) 
+
+pluto_5yr <- pluto_5yr %>% arrange(desc(data.YearBuilt)) %>% mutate(cum_pct = cumsum(pct)) 
+
+pluto_5yr <- arrange(pluto_5yr, data.YearBuilt)
+
+pluto_5yr <-  pluto_5yr %>% mutate(group = ifelse(cum_pct > .50, "40%", "60%"))
+
+pluto_5yr$cum_pct <- cumsum(pluto_5yr$pct)
+
+# Build a graph of the cumulative sum of buildings from 1850 to 2015
+
+ggplot(pluto_5yr, aes(x=data.YearBuilt, y=cumsum(.count), fill=group)) +  
+geom_bar(stat="identity") +
+geom_vline(aes(xintercept = 1934), colour="black", linetype=5) +
+scale_y_continuous(label = comma) + 
+scale_x_continuous(breaks = seq(1850, 2015, 20), limits = c(1850, 2015)) +
+labs(x="Year Built", y = "Cumulative Number of Buildings", fill="Breakdown") + 
+ggtitle("New York - When Were Most Buildings Constructed?") +
+annotate("text", x = 1934, y = 750000, label = "60% of Building Constructed \n After 1934", colour="black", size = 3)   
+
+```
+
+Looking at the resulting graph, the city inspectors should focus on buildings built in the early 1930s forward.  By doing this, they'll be able to cover approximately 60% of all buildings.
+
+One issue seen with the pluto dataset is that there are __44180__ entries with 0 for the YearBuilt value.  This raises some questions about the accuracy of the data and any generated statistics or graphs based on the data.
+
+```{r}
+
+qplot(all_pluto$YearBuilt, geom="histogram", binwidth = 100) + scale_y_continuous(label = comma) 
+
+```
+
+```{r, echo=F}
+
+ggsave("Question1.png", width = 6.4, height=6.4, dpi=100)
+
+```
+
+2. The city is particularly worried about buildings that were unusually tall when they were built, since best-practices for safety hadn't yet been determined. Create a graph that shows how many buildings of a certain number of floors were built in each year (note: you may want to use a log scale for the number of buildings). It should be clear when 20-story buildings, 30-story buildings, and 40-story buildings were first built in large numbers.
+
+
+```{r}
+
+df <- filter(all_pluto, NumFloors > 19 & YearBuilt > 0) %>% select(YearBuilt, NumFloors)
+
+df$FloorRange <- cut(df$NumFloors , 
+                     breaks = c(-Inf, 29, 39, 49  ), 
+                     labels = c("20", "30", "40"), 
+                     right = FALSE)
+
+
+df2 <- df %>% na.omit() %>% group_by(YearBuilt, FloorRange) %>% summarise(Total = n()) %>% select(YearBuilt, FloorRange, Total) %>%
+     arrange(YearBuilt, FloorRange)  
+ 
+facet_names <- c(`20` = "20 - 29 Floor Buildings",
+                 `30` = "30 - 39 Floor Buildings",
+                 `40` = "40 - 49 Floor Buildings")
+
+ggplot(data=df2, aes(x=YearBuilt, y=Total, colour = FloorRange)) +
+    geom_line() +
+    geom_point( size=1, shape=20, fill="white") + 
+    facet_grid(FloorRange  ~ ., labeller = as_labeller(facet_names)) +
+    labs(x = "Year Built", y = "Number of Buildings Constructed", colour = "Floor Range") +
+    theme(axis.line=element_line()) + 
+    scale_x_continuous(breaks=seq(1850, 2015, 20)) +
+    scale_y_continuous(breaks=seq(0, 100, 10)) +
+    ggtitle("NYC Tall Buildings - \nYear of Construction Comparison")
+
+```
+ 
+```{r, echo=F}
+
+ggsave("Question2.png", width = 6.4, height=6.4, dpi=100)
+
+```
+
+
+
+3. Your boss suspects that buildings constructed during the US's involvement in World War II (1941-1945) are more poorly constructed than those before and after the way due to the high cost of materials during those years. She thinks that, if you calculate assessed value per floor, you will see lower values for buildings at that time vs before or after. Construct a chart/graph to see if she's right. 
+
+```{r}
+
+summary(all_pluto$AssessTot)
+summary(all_pluto$AssessLand)
+
+df <- all_pluto %>%  
+      filter(YearBuilt > 1850, NumFloors != 0, AssessTot > 0, AssessLand > 0) %>%
+      mutate(BldgAssessment       = AssessTot - AssessLand,
+             Per_Floor_Assessment = BldgAssessment/NumFloors) %>%
+      select(YearBuilt, Per_Floor_Assessment, Borough)
+     
+  
+# filter to the a 30 year timeframe overlapping WWII
+df <- filter(df, YearBuilt > 1930, YearBuilt < 1960)
+
+year_bin <- 1
+
+# Analyze median floor values per year
+# Create one set for all boroughs and then one for each individual
+
+# All Boroughs - Median #
+all_con <- with(df, condense(bin(YearBuilt, year_bin), z=Per_Floor_Assessment, summary="median"))
+all_median <- smooth(all_con, 100, var=".median" , type="robust")
+all_median$Borough <- "All"
+
+# Brooklyn - Median #
+BK_con <- with(filter(df, Borough == "BK"),
+                condense(bin(YearBuilt, year_bin), z=Per_Floor_Assessment, summary="median"))
+BK_median <- smooth(BK_con, 100, var=".median", type="robust")
+BK_median$Borough <- "BK"
+
+# Bronx - Median #
+BX_con <- with(filter(df, Borough == "BX"),
+               condense(bin(YearBuilt, year_bin), z=Per_Floor_Assessment, summary="median"))
+BX_median <- smooth(BX_con, 100, var=".median", type="robust")
+BX_median$Borough <- "BX"
+
+# Manhattan - Median #
+MN_con <- with(filter(df, Borough == "MN"),
+               condense(bin(YearBuilt, year_bin), z=Per_Floor_Assessment, summary="median"))
+MN_median <- smooth(MN_con, 100, var=".median", type="robust")
+MN_median$Borough <- "MN"
+
+# Queens - Median #
+QN_con <- with(filter(df, Borough == "QN"),
+               condense(bin(YearBuilt, year_bin), z=Per_Floor_Assessment, summary="median"))
+QN_median <- smooth(QN_con, 100, var=".median", type="robust")
+QN_median$Borough <- "QN"
+
+# Staten Island - Median #
+SI_con <- with(filter(df, Borough == "SI"),
+               condense(bin(YearBuilt, year_bin), z=Per_Floor_Assessment, summary="median"))
+SI_median <- smooth(SI_con, 100, var=".median", type="robust")
+SI_median$Borough <- "SI"
+
+# Combine all into one dataframe for plotting
+combined <- rbindlist(list(all_median, SI_median, BX_median, BK_median, MN_median, QN_median))
+
+# drop cases with NA
+combined <- combined[complete.cases(combined),]
+
+
+facet_names <- c(`All` = "All",
+                 `BK` = "Brooklyn",
+                 `BX` = "Bronx",
+                 `MN` = "Manhattan",
+                 `QN` = "Queens",
+                 `SI` = "Staten Island")
+
+# plot the results 
+ggplot() +  
+    geom_line(data=combined, aes(x=YearBuilt, y=.median, colour=Borough)) + 
+    ggtitle("NYC Boroughs - Median Building Value Per Year (1930-1960) ") + 
+    ylab("Median Floor Value")  + 
+    facet_grid(. ~ Borough, labeller = as_labeller(facet_names)) +
+    scale_y_continuous(labels=dollar, breaks = scales::pretty_breaks(n = 7)) +
+    scale_x_continuous(breaks=seq(1930, 1960, 10)) +
+    theme(axis.text.x = element_text(angle = 90))
+
+```
+
+```{r, echo=F}
+ggsave("Question3.png", width = 6.4, height = 6.4, dpi=100)
+
+```
+
+I was curious if there may have been a geographical component to the observation that the per floor assessment value dropped around the time of WWII.  Looking at the resulting graph of median assessment per floor (smoothed), we see that the assessment value per floor is rising for all boroughs combined from 1930 to 1960.  We do see a noticeable decline in assessment value in the Bronx.  Staten Island looks to be relatively flat with a possible small decline.  
+
+The remaining boroughs - Brooklyn, Manhattan, and Queens -- all show significant increases in assessment value per floor over the 30 year period.
+
+
+
