@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>DATA 608: Homework #5</title>
+	<script src="https://d3js.org/d3.v4.min.js"></script>
+</head>
+
+<body>
+
+<h1>DATA 608: Homework #5</h1>
+<h2>JavaScript and D3</h2>
+<h2>Keith Folsom </h2
+
+
+<!-- Problem 1 
+
+Table creation method based on work shown here:
+http://christopheviau.com/d3_tutorial/
+
+-->
+
+
+<br>
+<h3>Problem 1.   Create a function that takes an input number, and prints a table with the first 20 multiples of the number, in order 5x4.</h3>
+
+<p>
+<form name='formMultiple'>
+    <input type="number" size="3" name='numberInput' autofocus >
+    <input type="button" value="Show Table" onClick="if (document.formMultiple.numberInput.value != '') 
+	                                                      {createMultipleTab();} 
+													 else {
+													      alert('Enter a number in the input box');}
+														  document.formMultiple.numberInput.focus();">
+</form>
+</p>
+
+<div id="div1"></div>
+
+<script type="text/javascript">
+
+function createMultipleTab () {
+    
+	//create an array of numbers from 1 to 20 and multiply each by the input value 
+    out =  d3.range(1, 21, 1).map(function(d) { return d * document.formMultiple.numberInput.value ;});
+	
+	// break the array into a 5 x 4 array
+    result =  [out.slice(0, 4), out.slice(4, 8), out.slice(8, 12),  out.slice(12, 16), out.slice(16, 21)]
+	
+	//clear any existing table 
+	document.getElementById("div1").innerHTML = ""
+	
+	d3.select("#div1")
+			.append("table")
+			.style("border-collapse", "collapse")
+			.style("border", "2px black solid")
+
+			.selectAll("tr")
+			.data(result)
+			.enter().append("tr")
+
+			.selectAll("td")
+			.data(function(d){return d;})
+			.enter().append("td")
+			.style("border", "1px black solid")
+			.style("padding", "5px")
+			.on("mouseover", function(){d3.select(this).style("background-color", "aliceblue")})
+			.on("mouseout", function(){d3.select(this).style("background-color", "white")})
+			.text(function(d){return d;})
+			.style("font-size", "12px");
+	
+};
+</script>
+
+
+<!-- Problem 2 Part 1 -->
+
+<br><br>
+<h3>2. Write a function to load the presidents.csv data and display the data as an html table.</h3>
+
+<div id ='div2'></div>
+
+<script type="text/javascript">
+   
+	d3.text("presidents.csv", function(csv) {
+
+        parsedCSV = d3.csvParseRows(csv);
+		
+		var sampleHTML = d3.select("#div2")
+			.append("table")
+			.style("border-collapse", "collapse")
+			.style("border", "2px blue solid")
+
+			.selectAll("tr")
+			.data(parsedCSV)
+			.enter().append("tr")
+
+			.selectAll("td")
+			.data(function(d){return d;})
+			.enter().append("td")
+			.style("border", "1px blue solid")
+			.style("padding", "5px")
+			.on("mouseover", function(){d3.select(this).style("background-color", "aliceblue")})
+			.on("mouseout", function(){d3.select(this).style("background-color", "white")})
+			.text(function(d){return d;})
+			.style("font-size", "12px");
+			
+    });
+
+//var options =  rows.map(function(value,index) { return value[0]; }) ;
+
+	
+</script>
+
+
+<!-- Problem 2 Part 2 -->
+
+
+<br><br>
+<h3>Now that you have the presidents data loaded, write a function that will return that president's height & weight when typed in.</h3>
+
+<p>
+
+
+<form id="formPresidents">
+  <select id="selectPresident" onChange="choosePres();">
+    <option>Choose a President</option>
+  </select>
+</form>
+
+</p>
+
+<div id ='div3'></div>
+
+<script type="text/javascript">
+
+
+function choosePres() {
+
+    // get the value selected in the dropdown box
+	document.getElementById("selectPresident");
+	var text= sel.options[sel.selectedIndex].text;
+	
+	console.log(text)
+	
+	d3.csv("presidents.csv", function(csv2) {
+	   		
+        filteredCSV = parsedCSV.filter(function(row) { 
+		                               return row[0] == text || row[0] == "Name";  // keep the header row
+                           })
+		
+	   //console.log(filteredCSV)
+	   document.getElementById("div3").innerHTML = "<br>Result for: " + text + "<br><br>"
+	
+		var sampleHTML = d3.select("#div3")
+			.append("table")
+			.style("border-collapse", "collapse")
+			.style("border", "2px blue solid")
+
+			.selectAll("tr")
+			.data(filteredCSV)
+			.enter().append("tr")
+
+			.selectAll("td")
+			.data(function(d){return d;})
+			.enter().append("td")
+			.style("border", "1px blue solid")
+			.style("padding", "5px")
+			.on("mouseover", function(){d3.select(this).style("background-color", "aliceblue")})
+			.on("mouseout", function(){d3.select(this).style("background-color", "white")})
+			.text(function(d){return d;})
+			.style("font-size", "12px");
+	
+	
+    });
+};
+	
+
+	
+	
+</script>
+</body>
+
+<script type="text/javascript">
+
+// load the names of the presidents into the dropdown list from the csv file
+
+var options = []
+var sel = document.getElementById('selectPresident');
+
+d3.csv("presidents.csv",function(csv){   
+		  
+	csv.map(function(d) {
+      options.push(d.Name);
+    })
+	
+	for(var i = 0; i < options.length; i++) {
+       var opt = document.createElement('option');
+       opt.innerHTML = options[i];
+       opt.value = options[i];
+       sel.appendChild(opt)};	  
+		  
+		  
+});
+
+</script>
+</html>
