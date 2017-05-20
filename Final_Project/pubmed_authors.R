@@ -5,7 +5,7 @@ library(dplyr)
 library(igraph)
 
 ## Load the publication datasets from GitHub
-GitHubPath <- "https://github.com/kfolsom98/DATA608/raw/master/Final_Project/"
+GitHubPath <- "https://github.com/kfolsom98/DATA608/raw/master/Final_Project/data/"
 
 mf_pubs_data <- load(url(paste0(GitHubPath, "myelofibrosis.RData")))
 pv_pubs_data <- load(url(paste0(GitHubPath, "polycythemia_vera.RData")))
