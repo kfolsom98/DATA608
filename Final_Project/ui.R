@@ -83,7 +83,7 @@ ui <- dashboardPage(
           width = 6, title = "Most Frequent Abstract Words", solidHeader = TRUE, status = 'success',
           collapsible = TRUE, collapsed = TRUE,
           
-          DT::dataTableOutput("mf_top_words")# good
+          DT::dataTableOutput("abstract_top_words") 
           
         )
         
@@ -144,7 +144,7 @@ ui <- dashboardPage(
                 tabPanel("Raw Data (PubMed)",
                          box(
                            width = 22,
-                           title = paste0("Where are Articles about %s being Published?", c()) , 
+                           title = paste0("Publications Sourced From PubMed", c()) , 
                            solidHeader = TRUE, status = 'info',
                            collapsible = TRUE, collapsed = FALSE,
                            DT::dataTableOutput("pubs_raw")))
@@ -203,7 +203,7 @@ ui <- dashboardPage(
                            )
                          )),
                 tabPanel("Word Trend", 
-                         box( width = 20, title = "Top Abstract Word Trend", solidHeader = TRUE, status = 'info',
+                         box( width = 20, title = "Abstract Top Word Trend", solidHeader = TRUE, status = 'info',
                               collapsible = TRUE, collapsed = FALSE,#
                               
                               timevisOutput("word_timeline"))
@@ -212,15 +212,15 @@ ui <- dashboardPage(
               )
             )),
     
-    tabItem("pub_authors", style = "overflow-y:scroll; max-height: 600px; position:relative;",
+    tabItem("pub_authors", style = "overflow-y:scroll; max-height: 800px; position:relative;",
             
             fluidRow(
               tabBox(
                 # The id lets us use input$tabset1 on the server to find the current tab
-                id = "tabset1", height = "800px",
+                id = "tabset1", height = "1000px",
                 title = "Author Networks", width = 12, side = "left",
                 
-                tabPanel("Author Collaborations",
+                tabPanel("By Collaborations",
                          fluidRow(
                            column(8, 
                                   
@@ -239,10 +239,10 @@ ui <- dashboardPage(
                                     width = 20, status = "warning", solidHeader = TRUE,
                                     collapsible = TRUE, collapsed = TRUE,
                                     title =  "Author Ranking",
-                                    DT::dataTableOutput("author_rank"))
+                                    DT::dataTableOutput("author_rank")),
                                   
-                           ),
-                           column(4, 
+                           #),
+                           #column(4, 
                                   
                                   box(
                                     width = 20, status = "warning", solidHeader = TRUE,
@@ -271,10 +271,10 @@ ui <- dashboardPage(
                                     width = 20, status = "warning", solidHeader = TRUE,
                                     collapsible = TRUE, collapsed = TRUE,
                                     title =  "Author Ranking",
-                                    DT::dataTableOutput("author_rank_cited"))
+                                    DT::dataTableOutput("author_rank_cited")),
                                   
-                           ),
-                           column(3, 
+                           #),
+                           #column(3, 
                                   
                                   box(
                                     width = 20, status = "warning", solidHeader = TRUE,

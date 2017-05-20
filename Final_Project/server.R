@@ -106,7 +106,7 @@ shinyServer(function(input, output,session) {
   })
   
   # return citation network graph based on user selection
-  selectedCitedUnigrams <- eventReactive(input$TA, {
+  selectedAbstractUnigrams <- eventReactive(input$TA, {
     
     switch(input$TA,
            'Myelofibrosis' =     mf_top20_unigram,
@@ -116,7 +116,7 @@ shinyServer(function(input, output,session) {
   })
   
   # return citation network graph based on user selection
-  selectedCitedUnigramsYear <- eventReactive(input$TA, {
+  selectedAbstractUnigramsYear <- eventReactive(input$TA, {
     
     switch(input$TA,
            'Myelofibrosis' =     mf_top20_unigram_year,
@@ -127,7 +127,7 @@ shinyServer(function(input, output,session) {
   
   
   # return citation network graph based on user selection
-  selectedCitedBigrams <- eventReactive(input$TA, {
+  selectedAbstractBigrams <- eventReactive(input$TA, {
     
     switch(input$TA,
            'Myelofibrosis' =     mf_top20_bigram,
@@ -212,7 +212,7 @@ shinyServer(function(input, output,session) {
       group_by(LeadAuthorName) %>% summarise(n = sum(Citations)) %>%
       #tally() %>%
       arrange(desc(n)) %>%
-      select("Author" = LeadAuthorName, "# Citations" = n) %>%
+      select("Author" = LeadAuthorName, "Total Citations" = n) %>%
       as.data.frame() %>%
       head(5)
   }, digits = 0)
@@ -431,9 +431,9 @@ shinyServer(function(input, output,session) {
     
     #https://plot.ly/ggplot2/user-guide/
     
-    p <- ggplot(selectedCitedUnigrams(), aes(x=reorder(word, Pct), y=Pct, fill=word)) + 
+    p <- ggplot(selectedAbstractUnigrams(), aes(x=reorder(word, Pct), y=Pct, fill=word)) + 
       geom_bar(stat="identity") + coord_flip() +
-      ylab('% Frequency') + xlab('Words (bigrams)') +
+      ylab('% Frequency') + xlab('Word') +
       guides(fill=FALSE) # +  ggtitle('Most Common Words')
     
     # p +   theme(legend.position="none") %>% hide_colorbar() , showscale = FALSE
@@ -454,7 +454,7 @@ shinyServer(function(input, output,session) {
   output$bigrams<- renderPlotly ({  
     
     mf_top20_bigram
-    p <- ggplot(selectedCitedBigrams(), aes(x=reorder(word, Pct), y=Pct, fill=word)) +
+    p <- ggplot(selectedAbstractBigrams(), aes(x=reorder(word, Pct), y=Pct, fill=word)) +
       geom_bar(stat="identity") + coord_flip() +
       ylab('% Frequency') +  guides(fill=FALSE) +   xlab('') 
     ggtitle('Most Common Bigrams')
@@ -468,9 +468,8 @@ shinyServer(function(input, output,session) {
   ## ---------------------------------
   output$abstract_word_trend <- renderPlotly ({  
     
-    #mf_top20_unigram_year 
-    
-    selectedCitedUnigramsYear() %>% filter(Year != 2017) %>% 
+
+    selectedAbstractUnigramsYear() %>% filter(Year != 2017) %>% 
       ggplot( aes(x = Year, y = Pct)) + geom_point() +
       stat_smooth(method = "lm", se = FALSE) + facet_wrap(~Keyword) +
       theme(axis.text.x = element_text(angle = 90, hjust = 1)) -> p
@@ -512,7 +511,7 @@ shinyServer(function(input, output,session) {
     selectedPubs() %>% 
       select(PMID, LeadAuthorName, Year, Month, JournalTitle, anger:trust) %>%
       gather(Sentiment, "Val", -PMID, -LeadAuthorName, -Year, -Month, -JournalTitle) %>%
-      group_by(Sentiment) %>% arrange(desc(Val)) %>% slice(1:5) %>% 
+      group_by(Sentiment) %>% arrange(desc(Val), Year, Month) %>% slice(1:5) %>% 
       select(Sentiment, PMID, LeadAuthorName, Year, Month, JournalTitle) %>%
       
       # future add: include link to the pubmed article
@@ -527,9 +526,9 @@ shinyServer(function(input, output,session) {
   }) 
   
   
-  output$mf_top_words <- DT::renderDataTable({
+  output$abstract_top_words <- DT::renderDataTable({
     
-    mf_top20_unigram %>%  
+    selectedAbstractUnigrams() %>%  
       arrange(desc(count)) %>% select(word) %>% slice(1:5) %>%
       
       DT::datatable(rownames=FALSE,class='compact stripe hover row-border',
@@ -588,7 +587,7 @@ shinyServer(function(input, output,session) {
                     class='compact stripe hover row-border', #filter = 'top', 
                     options= list( bLengthChange=0, paging = TRUE,
                                    searching = FALSE, info=FALSE,
-                                   pageLength = 10, autoWidth = TRUE))
+                                   pageLength = 10, autoWidth = F))
     
   }) 
   
@@ -627,13 +626,13 @@ shinyServer(function(input, output,session) {
              'Most Influence'   = selectedCollabMetrics() %>% arrange(desc(eig))
       )
     
-    data %>% select(AuthorName) %>%
+    data %>% select(AuthorName) %>% slice(1:1000) %>% 
       
-      DT::datatable(rownames=T, colnames = "Author Name", 
+      DT::datatable(rownames=T, colnames = c("Rank", "Author Name"), 
                     class='compact stripe hover row-border', #filter = 'top', 
                     options= list( bLengthChange=0, paging = TRUE,
                                    searching = TRUE, info=TRUE,
-                                   pageLength = 20, autoWidth = TRUE))
+                                   pageLength = 20, autoWidth = F))
     
   }) 
   
@@ -673,7 +672,7 @@ shinyServer(function(input, output,session) {
   # ## abstract top words using timevis
   output$word_timeline <- renderTimevis({
 
-    selectedCitedUnigramsYear() %>%  group_by(Year) %>%
+    selectedAbstractUnigramsYear() %>%  group_by(Year) %>%
       dplyr::arrange(desc(Count)) %>% dplyr::top_n(5, Count) %>%
       mutate(start = paste0(Year, '-01-01'),
              end   = paste0(Year, '-12-31'),
