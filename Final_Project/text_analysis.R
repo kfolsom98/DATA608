@@ -1,5 +1,5 @@
 ## Load the publication datasets from GitHub
-GitHubPath <- "https://github.com/kfolsom98/DATA608/raw/master/Final_Project/"
+GitHubPath <- "https://github.com/kfolsom98/DATA608/raw/master/Final_Project/data/"
 
 mf_pubs_data <- load(url(paste0(GitHubPath, "myelofibrosis.RData")))
 pv_pubs_data <- load(url(paste0(GitHubPath, "polycythemia_vera.RData")))
@@ -13,7 +13,7 @@ library(quanteda)
 
 abstract_analysis <- function(publications_df) {
   
-  publications_df <- mf_publications_df
+  #publications_df <- mf_publications_df # for testing only
   
   abs <- publications_df$Abstract 
   names(abs) <- publications_df$PMID
